@@ -10,7 +10,7 @@ double seriesSumDescent(double x, int n, double Fi, int i, double sum) {
     return sum;
 }
 
-int main() {
+int descent() {
     double x;
     int n;
 
