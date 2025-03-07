@@ -23,6 +23,7 @@
         canvas {
             border: 3px solid #1565C0;
             background-color: #FFFFFF;
+            border-radius: 10px;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"></script>
@@ -34,107 +35,118 @@
         <canvas id="napr" width="600" height="600"></canvas>
     </div>
     <script>
-        const canvasNeNapr = document.getElementById("neNapr");
-        const canvasNapr = document.getElementById("napr");
-        const ctxNeNapr = canvasNeNapr.getContext("2d");
-        const ctxNapr = canvasNapr.getContext("2d");
+const canvasNeNapr = document.getElementById("neNapr");
+const canvasNapr = document.getElementById("napr");
+const ctxNeNapr = canvasNeNapr.getContext("2d");
+const ctxNapr = canvasNapr.getContext("2d");
 
-        const n = 10;
-        const coef = 1 - 0.02 - 0.005 - 0.25;
-        const radius = 15;
+const n = 11; // 10 + n3 (where n3 = 1)
+const radius = 20;
+const centerX = 300, centerY = 300, circleRadius = 220;
+const seed = 4411;
+const n3 = 1, n4 = 1;
 
-        const nodePositions = [
-            { x: 120, y: 250 }, { x: 200, y: 150 }, { x: 300, y: 110 },
-            { x: 400, y: 150 }, { x: 480, y: 250 }, { x: 480, y: 350 },
-            { x: 400, y: 450 }, { x: 300, y: 490 }, { x: 200, y: 450 },
-            { x: 120, y: 350 }
-        ];
+const k = 1.0 - n3 * 0.02 - n4 * 0.005 - 0.25;
 
-        function generateAdjacencyMatrix(symmetric, seed) {
-            let matrix = [];
-            let rng = new Math.seedrandom(seed);
-            for (let i = 0; i < n; i++) {
-                matrix[i] = [];
-                for (let j = 0; j < n; j++) {
-                    matrix[i][j] = rng() * 2 * coef;
-                    matrix[i][j] = matrix[i][j] < 1 ? 0 : 1;
-                }
-            }
-            if (symmetric) {
-                for (let i = 0; i < n; i++) {
-                    for (let j = 0; j < n; j++) {
-                        if (matrix[i][j] === 1) matrix[j][i] = 1;
-                    }
-                }
-            }
-            return matrix;
+const nodePositions = Array.from({ length: n }, (_, i) => {
+    const angle = (i * 2 * Math.PI) / n;
+    return {
+        x: centerX + circleRadius * Math.cos(angle),
+        y: centerY + circleRadius * Math.sin(angle)
+    };
+});
+
+function generateAdjacencyMatrix(symmetric) {
+    let matrix = [];
+    let rng = new Math.seedrandom(seed);
+    for (let i = 0; i < n; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < n; j++) {
+            let value = rng() * 2.0 * k;
+            matrix[i][j] = value >= 1.0 ? 1 : 0;
         }
+    }
+    if (symmetric) {
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                if (matrix[i][j] === 1) matrix[j][i] = 1;
+            }
+        }
+    }
+    return matrix;
+}
 
-        function drawNodes(ctx) {
-            nodePositions.forEach((pos, idx) => {
-                ctx.fillStyle = "#1565C0";
+function drawNodes(ctx) {
+    nodePositions.forEach((pos, idx) => {
+        ctx.fillStyle = "#1565C0";
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#0D47A1";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = "white";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${idx + 1}`, pos.x, pos.y);
+    });
+}
+
+function drawArrow(ctx, x, y, angle) {
+    const size = 10;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = "#0D47A1";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-size, -size / 2);
+    ctx.lineTo(-size, size / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawEdges(ctx, matrix, directed) {
+    ctx.strokeStyle = "#0D47A1";
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.85;
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (matrix[i][j] === 1) {
+                const { x: x1, y: y1 } = nodePositions[i];
+                const { x: x2, y: y2 } = nodePositions[j];
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+                
+                const x1_new = x1 + radius * Math.cos(angle);
+                const y1_new = y1 + radius * Math.sin(angle);
+                const x2_new = x2 - radius * Math.cos(angle);
+                const y2_new = y2 - radius * Math.sin(angle);
+
                 ctx.beginPath();
-                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(x1_new, y1_new);
+                ctx.lineTo(x2_new, y2_new);
                 ctx.stroke();
-                ctx.fillStyle = "white";
-                ctx.font = "14px Times New Roman";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(`${idx + 1}`, pos.x, pos.y);
-            });
-        }
 
-        function drawArrow(ctx, x, y, angle) {
-            const size = 7;
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(-size, -size);
-            ctx.lineTo(0, 0);
-            ctx.lineTo(-size, size);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-        }
-
-        function drawEdges(ctx, matrix, directed) {
-            ctx.strokeStyle = "#0D47A1";
-            ctx.lineWidth = 2;
-            const offset = 20;
-            for (let i = 0; i < n; i++) {
-                for (let j = 0; j < n; j++) {
-                    if (matrix[i][j] === 1) {
-                        const { x: x1, y: y1 } = nodePositions[i];
-                        const { x: x2, y: y2 } = nodePositions[j];
-                        ctx.beginPath();
-                        ctx.moveTo(x1, y1);
-                        let midX, midY;
-                        if (directed && matrix[j][i] === 1 && i !== j) {
-                            midX = (x1 + x2) / 2 + (y1 - y2) / offset;
-                            midY = (y1 + y2) / 2 + (x2 - x1) / offset;
-                            ctx.lineTo(midX, midY);
-                        }
-                        ctx.lineTo(x2, y2);
-                        ctx.stroke();
-                        if (directed) {
-                            const angle = Math.atan2(y2 - y1, x2 - x1);
-                            drawArrow(ctx, x2 - radius * Math.cos(angle), y2 - radius * Math.sin(angle), angle);
-                        }
-                    }
+                if (directed) {
+                    drawArrow(ctx, x2_new, y2_new, angle);
                 }
             }
         }
+    }
+    ctx.globalAlpha = 1;
+}
 
-        const matrixSymmetric = generateAdjacencyMatrix(true, 3301);
-        const matrixDirected = generateAdjacencyMatrix(false, 4402);
+const matrixSymmetric = generateAdjacencyMatrix(true);
+const matrixDirected = generateAdjacencyMatrix(false);
 
-        drawEdges(ctxNeNapr, matrixSymmetric, false);
-        drawEdges(ctxNapr, matrixDirected, true);
-        drawNodes(ctxNeNapr);
-        drawNodes(ctxNapr);
+drawEdges(ctxNeNapr, matrixSymmetric, false);
+drawEdges(ctxNapr, matrixDirected, true);
+drawNodes(ctxNeNapr);
+drawNodes(ctxNapr);
+
     </script>
 </body>
 </html>
